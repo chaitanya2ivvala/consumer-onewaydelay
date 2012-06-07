@@ -54,7 +54,15 @@ static struct option longopt[] = {
 };
 
 static void show_usage(){
-
+	printf("%s\n"
+	       "usage: %s -i IFACE -s BEGIN -c END STREAM..\n"
+	       "\n"
+	       "  -i, --iface=IFACE    Interface to listen on.\n"
+	       "  -s, --seek=BYTES     Byte offset to begin from.\n"
+	       "  -c, --count=BYTES    Byte offset to end.\n"
+	       "  -t, --timeout=SEC    Discards packets after SEC.\n"
+	       "  -h, --help           This text.\n"
+	       "\n", program_name, program_name);
 	filter_from_argv_usage();
 }
 
