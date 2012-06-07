@@ -105,23 +105,14 @@ static void format(packet_id& pkt){
 	std::sort(pkt.data.begin(), pkt.data.end(), [](const packet_data& a, const packet_data& b) -> bool {
 		return timecmp(&a.timestamp, &b.timestamp) == -1;
 	});
-	//std::sort(pkt.data.begin(), pkt.data.end(), myobject);
 
-	/* sort */
-	// timepico cur = id.ts[0];
-	 for ( unsigned int i = 1; i < num_streams; i++ ){
-	// 	if ( timecmp(id.ts[i], cur) == -1 ){
-	// 		const std::string tmp m = id.mampid[i];
-	// 		const timepico t = id.ts[i];
-
-	// 	}
-
-	 	const timepico &a = pkt.data[i].timestamp;
-	 	const timepico &b = pkt.data[i-1].timestamp;
-	 	const timepico dt = timepico_sub(a, b);
+	for ( unsigned int i = 1; i < num_streams; i++ ){
+		const timepico &a = pkt.data[i].timestamp;
+		const timepico &b = pkt.data[i-1].timestamp;
+		const timepico dt = timepico_sub(a, b);
 		fprintf(stdout, ";%s;%d.%012"PRIu64";%s;%d.%012"PRIu64, pkt.data[i-1].mampid.c_str(), b.tv_sec, b.tv_psec, pkt.data[i].mampid.c_str(), a.tv_sec, a.tv_psec);
-	 	fprintf(stdout, ";%d.%012"PRIu64, dt.tv_sec, dt.tv_psec);
-	 }
+		fprintf(stdout, ";%d.%012"PRIu64, dt.tv_sec, dt.tv_psec);
+	}
 	fprintf(stdout, "\n");
 }
 
@@ -214,17 +205,6 @@ int main(int argc, char* argv[]){
 
 		const std::string hash(hex);
 		auto it = table.find(hash);
-
-		// fprintf(stderr, "%.8s\n", cp->mampid);
-		// const struct ip* ip = find_ip_header(cp->ethhdr);
-		// if ( ip ){
-		// 	fprintf(stderr, "  src: %s\n", inet_ntoa(ip->ip_src));
-		// 	fprintf(stderr, "  dst: %s\n", inet_ntoa(ip->ip_dst));
-		// }
-		// hexdump(stderr, (char*)&cp->payload[offset], bytes);
-		// fprintf(stderr, "%s\n\n", hash.c_str());
-
-		//print("%s\n", hash.c_str());
 		if ( it != table.end() ){ /* match found */
 			packet_id& id = it->second;
 
