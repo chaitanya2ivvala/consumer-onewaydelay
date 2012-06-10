@@ -108,12 +108,14 @@ static void handle_sigint(int signum){
 	}
 }
 
+static bool packet_sort(const packet_data& a, const packet_data& b) {
+	return timecmp(&a.timestamp, &b.timestamp) == -1;
+}
+
 static void format(packet_id& pkt){
 	fprintf(stdout, "%d", pkt.seq);
 
-	std::sort(pkt.data.begin(), pkt.data.end(), [](const packet_data& a, const packet_data& b) -> bool {
-		return timecmp(&a.timestamp, &b.timestamp) == -1;
-	});
+	std::sort(pkt.data.begin(), pkt.data.end(), packet_sort);
 
 	for ( unsigned int i = 1; i < num_streams; i++ ){
 		const timepico &a = pkt.data[i].timestamp;
