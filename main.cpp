@@ -12,6 +12,7 @@
 #include <netinet/ip.h>
 #include <string>
 #include <map>
+#include <vector>
 #include <algorithm>
 
 #define MAX_STREAM 4
