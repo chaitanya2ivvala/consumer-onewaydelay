@@ -15,8 +15,7 @@
 #include <vector>
 #include <algorithm>
 
-#define MAX_STREAM 4
-static size_t num_streams = 0;
+static size_t num_points = 0;
 
 typedef struct packet_data {
 	picotime timestamp;
@@ -27,7 +26,7 @@ typedef struct packet_id {
 	packet_id()
 		: seq(0)
 		, num(0)
-		, data(num_streams){}
+		, data(num_points){}
 
 	unsigned int seq;
 	unsigned int num;
@@ -44,7 +43,7 @@ static size_t matched = 0;
 static std::map<std::string, packet_id> table;
 static const struct stream_stat* stream_stat = NULL;
 
-static const char* shortopt = "i:s:c:t:h";
+static const char* shortopt = "i:s:c:t:hn:";
 static struct option longopt[] = {
 	{"iface",   required_argument, 0, 'i'},
 	{"seek",    required_argument, 0, 's'},
@@ -62,6 +61,7 @@ static void show_usage(){
 	       "  -s, --seek=BYTES     Byte offset to begin from.\n"
 	       "  -c, --count=BYTES    Byte offset to end.\n"
 	       "  -t, --timeout=SEC    Discards packets after SEC.\n"
+	       "  -p N                 Number of points packets are expected to arrive at.\n"
 	       "  -h, --help           This text.\n"
 	       "\n", program_name, program_name);
 	filter_from_argv_usage();
@@ -117,7 +117,7 @@ static void format(packet_id& pkt, const struct cap_header* cp){
 
 	std::sort(pkt.data.begin(), pkt.data.end(), packet_sort);
 
-	for ( unsigned int i = 1; i < num_streams; i++ ){
+	for ( unsigned int i = 1; i < num_points; i++ ){
 		const timepico &a = pkt.data[i].timestamp;
 		const timepico &b = pkt.data[i-1].timestamp;
 		const timepico dt = timepico_sub(a, b);
@@ -160,10 +160,19 @@ int main(int argc, char* argv[]){
 			timeout = atoi(optarg);
 			break;
 
+		case 'p':
+			num_points = atoi(optarg);
+			break;
+
 		case 'h': /* --help */
 			show_usage();
 			exit(0);
 		}
+	}
+
+	if ( num_points < 2 ){
+		fprintf(stderr, "%s: need at least 2 expected points, use -p to specify.\n", program_name);
+		exit(1);
 	}
 
 	if ( !iface ){
@@ -179,22 +188,11 @@ int main(int argc, char* argv[]){
 	signal(SIGALRM, handle_alarm);
 	signal(SIGINT, handle_sigint);
 
-	num_streams = argc - optind;
 	stream_t st;
 	if ( stream_from_getopt(&st, argv, optind, argc, iface, NULL, program_name, 0) != 0 ){
 		exit(1); /* error already shown */
 	}
 	stream_stat = stream_get_stat(st);
-
-	if ( num_streams < 2 ){
-		fprintf(stderr, "%s: need at least two streams\n", program_name);
-		exit(1);
-	}
-
-	if ( num_streams > MAX_STREAM ){
-		fprintf(stderr, "%s: only up to %d streams supported.\n", program_name, MAX_STREAM);
-		exit(1);
-	}
 
 	unsigned int gseq = 0;
 
@@ -229,7 +227,7 @@ int main(int argc, char* argv[]){
 			if ( i < id.num ) continue;
 
 			id.data[id.num] = {cp->ts, std::string(cp->mampid, 8)};
-			if ( ++id.num == num_streams ){ /* passed all points */
+			if ( ++id.num == num_points ){ /* passed all points */
 				matched++;
 				format(id, cp);
 				table.erase(it);
