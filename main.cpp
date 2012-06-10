@@ -43,7 +43,7 @@ static size_t matched = 0;
 static std::map<std::string, packet_id> table;
 static const struct stream_stat* stream_stat = NULL;
 
-static const char* shortopt = "i:s:c:t:hn:";
+static const char* shortopt = "i:s:c:t:hp:";
 static struct option longopt[] = {
 	{"iface",   required_argument, 0, 'i'},
 	{"seek",    required_argument, 0, 's'},
@@ -106,6 +106,12 @@ static void handle_sigint(int signum){
 		fprintf(stderr, "\rGot SIGINT again, aborting.\n");
 		abort();
 	}
+}
+
+static std::string point_id(const struct cap_header* cp){
+	char buf[18];
+	sprintf(buf, "%.8s_%.8s", cp->mampid, cp->nic);
+	return std::string(buf);
 }
 
 static bool packet_sort(const packet_data& a, const packet_data& b) {
@@ -212,6 +218,8 @@ int main(int argc, char* argv[]){
 		        _[0], _[1], _[2], _[3], _[4], _[5], _[6], _[7], _[8], _[9], _[10], _[11], _[12], _[13], _[14], _[15]);
 
 		const std::string hash(hex);
+		const std::string point = point_id(cp);
+
 		auto it = table.find(hash);
 		if ( it != table.end() ){ /* match found */
 			packet_id& id = it->second;
@@ -219,14 +227,13 @@ int main(int argc, char* argv[]){
 			/* find duplicates (e.g. arp) */
 			unsigned int i;
 			for ( i = 0; i < id.num; i++ ){
-				if ( std::string(cp->mampid, 8) == id.data[i].mampid ){
-					//fprintf(stderr, "Dup\n");
+				if ( point == id.data[i].mampid ){
 					break;
 				}
 			}
 			if ( i < id.num ) continue;
 
-			id.data[id.num] = {cp->ts, std::string(cp->mampid, 8)};
+			id.data[id.num] = {cp->ts, point};
 			if ( ++id.num == num_points ){ /* passed all points */
 				matched++;
 				format(id, cp);
@@ -236,7 +243,7 @@ int main(int argc, char* argv[]){
 			packet_id id;
 			id.seq = ++gseq;
 			id.num = 1;
-			id.data[0] = {cp->ts, std::string(cp->mampid, 8)};
+			id.data[0] = {cp->ts, point};
 			table[hash] = id;
 		}
 	} while ( running );
