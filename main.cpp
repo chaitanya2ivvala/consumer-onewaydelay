@@ -181,11 +181,6 @@ int main(int argc, char* argv[]){
 		exit(1);
 	}
 
-	if ( !iface ){
-		fprintf(stderr, "%s: no interface specified, use --iface or --help to show usage.\n", program_name);
-		exit(1);
-	}
-
 	struct itimerval tv = {
 		{timeout, 0},
 		{timeout, 0},
