@@ -112,7 +112,7 @@ static bool packet_sort(const packet_data& a, const packet_data& b) {
 	return timecmp(&a.timestamp, &b.timestamp) == -1;
 }
 
-static void format(packet_id& pkt){
+static void format(packet_id& pkt, const struct cap_header* cp){
 	fprintf(stdout, "%d", pkt.seq);
 
 	std::sort(pkt.data.begin(), pkt.data.end(), packet_sort);
@@ -208,7 +208,6 @@ int main(int argc, char* argv[]){
 		const size_t bytes = min(cp->len, min(cp->caplen, count)) - offset;
 		if ( offset - bytes == 0 ) continue;
 
-
 		char hex[33];
 		unsigned char* _ = MD5((const unsigned char*)&cp->payload[offset], bytes, NULL);
 		sprintf(hex, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -232,7 +231,7 @@ int main(int argc, char* argv[]){
 			id.data[id.num] = {cp->ts, std::string(cp->mampid, 8)};
 			if ( ++id.num == num_streams ){ /* passed all points */
 				matched++;
-				format(id);
+				format(id, cp);
 				table.erase(it);
 			}
 		} else { /* no match */
