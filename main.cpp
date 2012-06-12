@@ -14,6 +14,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include "printpkt.hpp"
 
 static size_t num_points = 0;
 
@@ -34,6 +35,8 @@ typedef struct packet_id {
 } packet_id;
 
 static bool running = true;
+static bool verbose = false;
+static bool printpkt = false;
 static const char* program_name;
 static const char* iface = NULL;
 static uint32_t seek = 0;
@@ -43,13 +46,15 @@ static size_t matched = 0;
 static std::map<std::string, packet_id> table;
 static const struct stream_stat* stream_stat = NULL;
 
-static const char* shortopt = "i:s:c:t:hp:";
+static const char* shortopt = "i:s:c:t:hp:dv";
 static struct option longopt[] = {
-	{"iface",   required_argument, 0, 'i'},
-	{"seek",    required_argument, 0, 's'},
-	{"count",   required_argument, 0, 'c'},
-	{"timeout", required_argument, 0, 't'},
-	{"help",    no_argument,       0, 'h'},
+	{"iface",      required_argument, 0, 'i'},
+	{"seek",       required_argument, 0, 's'},
+	{"count",      required_argument, 0, 'c'},
+	{"timeout",    required_argument, 0, 't'},
+	{"help",       no_argument,       0, 'h'},
+	{"verbose",    no_argument,       0, 'v'},
+	{"displaypkt", no_argument,       0, 'd'},
 	{0,0,0,0}, /* sentinel */
 };
 
@@ -62,6 +67,8 @@ static void show_usage(){
 	       "  -c, --count=BYTES    Byte offset to end.\n"
 	       "  -t, --timeout=SEC    Discards packets after SEC.\n"
 	       "  -p N                 Number of points packets are expected to arrive at.\n"
+	       "  -d, --displaypkt     Show the packets.\n"
+	       "  -v, --verbose        Verbose.\n"
 	       "  -h, --help           This text.\n"
 	       "\n", program_name, program_name);
 	filter_from_argv_usage();
@@ -118,8 +125,8 @@ static bool packet_sort(const packet_data& a, const packet_data& b) {
 	return timecmp(&a.timestamp, &b.timestamp) == -1;
 }
 
-static void format(packet_id& pkt, const struct cap_header* cp){
-	fprintf(stdout, "%d", pkt.seq);
+static void format(packet_id& pkt, const struct cap_header* cp, bool compact){
+  fprintf(stdout, "%d ", pkt.seq);
 
 	std::sort(pkt.data.begin(), pkt.data.end(), packet_sort);
 
@@ -129,6 +136,13 @@ static void format(packet_id& pkt, const struct cap_header* cp){
 		const timepico dt = timepico_sub(a, b);
 		fprintf(stdout, ";%s;%d.%012"PRIu64";%s;%d.%012"PRIu64, pkt.data[i-1].mampid.c_str(), b.tv_sec, b.tv_psec, pkt.data[i].mampid.c_str(), a.tv_sec, a.tv_psec);
 		fprintf(stdout, ";%d.%012"PRIu64, dt.tv_sec, dt.tv_psec);
+	}
+	if(printpkt){
+	  if(compact){
+	    fprintf(stdout, ":LINK(%4d):CAPLEN(%4d):", cp->len, cp->caplen);
+	  }
+	  fprintf(stdout," ");
+	  print_eth(stdout, cp->ethhdr,compact);
 	}
 	fprintf(stdout, "\n");
 }
@@ -170,6 +184,14 @@ int main(int argc, char* argv[]){
 			num_points = atoi(optarg);
 			break;
 
+		case 'd':
+		  printpkt=true;
+		  break;
+
+		case 'v':
+		  verbose=true;
+			break;
+
 		case 'h': /* --help */
 			show_usage();
 			exit(0);
@@ -196,6 +218,7 @@ int main(int argc, char* argv[]){
 	stream_stat = stream_get_stat(st);
 
 	unsigned int gseq = 0;
+	fprintf(stdout, "VERBOSE = %d\n", verbose );
 
 	do {
 		struct cap_header* cp;
@@ -205,7 +228,7 @@ int main(int argc, char* argv[]){
 
 		const size_t offset = min(cp->len, seek);
 		const size_t bytes = min(cp->len, min(cp->caplen, count)) - offset;
-		if ( offset - bytes == 0 ) continue;
+		if ( offset - bytes < (count<seek) ) continue;
 
 		char hex[33];
 		unsigned char* _ = MD5((const unsigned char*)&cp->payload[offset], bytes, NULL);
@@ -214,6 +237,13 @@ int main(int argc, char* argv[]){
 
 		const std::string hash(hex);
 		const std::string point = point_id(cp);
+
+		if ( verbose ) {
+			fprintf(stdout, ":%.4s:%.8s:",  cp->nic, cp->mampid);
+			fprintf(stdout, "Pkt->LINK(%4d):CAPLEN(%4d):", cp->len, cp->caplen);
+			print_eth(stdout, cp->ethhdr,verbose);
+			fprintf(stdout,"hash=%s start=%zd, end=%zd\n",hex,offset,bytes);
+		}
 
 		auto it = table.find(hash);
 		if ( it != table.end() ){ /* match found */
@@ -228,10 +258,11 @@ int main(int argc, char* argv[]){
 			}
 			if ( i < id.num ) continue;
 
+
 			id.data[id.num] = {cp->ts, point};
 			if ( ++id.num == num_points ){ /* passed all points */
 				matched++;
-				format(id, cp);
+				format(id, cp,verbose);
 				table.erase(it);
 			}
 		} else { /* no match */

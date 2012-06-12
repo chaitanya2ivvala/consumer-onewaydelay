@@ -17,3 +17,5 @@ dist:	owd-$(rev).tar.gz
 
 owd-$(rev).tar.gz:
 	git archive --prefix=owd-$(rev)/ -o owd-$(rev).tar.gz master
+
+main.cpp: printpkt.hpp
