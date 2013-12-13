@@ -56,16 +56,16 @@ static void print_icmp(FILE* dst, const struct ip* ip, const struct icmphdr* icm
   
   if( icmp->type==0 && icmp->code==0){
     if(!compact){ 
-      fprintf(dst, "reply,%d ", icmp->un.echo.sequence);
+      fprintf(dst, "reply,%d ", ntohs(icmp->un.echo.sequence));
     } else {
-      fprintf(dst, " echo reply: SEQNR = %d ", icmp->un.echo.sequence);
+      fprintf(dst, " echo reply: SEQNR = %d ", ntohs(icmp->un.echo.sequence));
     }
   }
   if( icmp->type==8 && icmp->code==0){
     if(!compact){
-      fprintf(dst, "reqest, %d ", icmp->un.echo.sequence);
+      fprintf(dst, "reqest, %d ", ntohs(icmp->un.echo.sequence));
     } else {
-      fprintf(dst, " echo reqest: SEQNR = %d ", icmp->un.echo.sequence);
+      fprintf(dst, " echo reqest: SEQNR = %d ", ntohs(icmp->un.echo.sequence));
     }
   }
 }

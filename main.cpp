@@ -65,6 +65,7 @@ static void show_usage(){
 	       "  -i, --iface=IFACE    Interface to listen on.\n"
 	       "  -s, --seek=BYTES     Byte offset to begin from.\n"
 	       "  -c, --count=BYTES    Byte offset to end.\n"
+	       " Will look between Seek -- Count bytes. \n"
 	       "  -t, --timeout=SEC    Discards packets after SEC.\n"
 	       "  -p N                 Number of points packets are expected to arrive at.\n"
 	       "  -d, --displaypkt     Show the packets.\n"
