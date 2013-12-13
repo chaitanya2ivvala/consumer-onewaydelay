@@ -4,10 +4,10 @@ rev:=$(shell git log --pretty=format:'%h' -n 1)
 
 all: oneway
 
-oneway: main.o 
+oneway: main.o
 	$(CXX) $(LDFLAGS) $^ $(shell pkg-config libcap_utils-0.7 --libs) -lssl -lcrypto -lrt -o $@
 
-%.o: %.cpp %.hpp Makefile 
+%.o: %.cpp Makefile
 	$(CXX) $(CFLAGS) -Wall -std=c++0x $(shell pkg-config libcap_utils-0.7 --cflags) -c $< -o $@
 
 clean:
