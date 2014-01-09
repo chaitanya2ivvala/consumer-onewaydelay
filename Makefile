@@ -16,6 +16,9 @@ clean:
 
 dist:	owd-$(rev).tar.gz
 
+install: all
+	install -m 0755 oneway $(PREFIX)/bin
+
 owd-$(rev).tar.gz:
 	git archive --prefix=owd-$(rev)/ -o owd-$(rev).tar.gz master
 

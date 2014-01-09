@@ -43,7 +43,9 @@ static uint32_t seek = 0;
 static uint32_t count = 1500;
 static unsigned int timeout = 60;
 static size_t matched = 0;
-static std::map<std::string, packet_id> table;
+static std::map<std::string, packet_id> table; //Out;
+//static std::map<std::string, packet_id> tableIn;
+
 static const struct stream_stat* stream_stat = NULL;
 
 static const char* shortopt = "i:s:c:t:hp:dv";
