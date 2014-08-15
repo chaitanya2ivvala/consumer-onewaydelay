@@ -103,7 +103,7 @@ static void handle_alarm(int signum){
 	struct tm tm = *localtime(&t);
 	strftime(timestr, sizeof(timestr), "%a, %d %b %Y %H:%M:%S %z", &tm);
 
-	fprintf(stderr, "%s: [%s] progress report: %'"PRIu64" packets read (%zd matched, %zd pruned, %zd in progress).\n",
+	fprintf(stderr, "%s: [%s] progress report: %'" PRIu64 " packets read (%zd matched, %zd pruned, %zd in progress).\n",
 	        program_name, timestr, (long int)0, matched, pruned, table.size());
 	matched = 0;
 }
@@ -137,8 +137,8 @@ static void format(packet_id& pkt, const struct cap_header* cp, bool compact){
 		const timepico &a = pkt.data[i].timestamp;
 		const timepico &b = pkt.data[i-1].timestamp;
 		const timepico dt = timepico_sub(a, b);
-		fprintf(stdout, ";%s;%d.%012"PRIu64";%s;%d.%012"PRIu64, pkt.data[i-1].mampid.c_str(), b.tv_sec, b.tv_psec, pkt.data[i].mampid.c_str(), a.tv_sec, a.tv_psec);
-		fprintf(stdout, ";%d.%012"PRIu64, dt.tv_sec, dt.tv_psec);
+		fprintf(stdout, ";%s;%d.%012" PRIu64 ";%s;%d.%012" PRIu64, pkt.data[i-1].mampid.c_str(), b.tv_sec, b.tv_psec, pkt.data[i].mampid.c_str(), a.tv_sec, a.tv_psec);
+		fprintf(stdout, ";%d.%012" PRIu64, dt.tv_sec, dt.tv_psec);
 	}
 	if(printpkt){
 	  if(compact){
