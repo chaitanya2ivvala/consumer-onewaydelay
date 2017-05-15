@@ -3,6 +3,22 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 #include <sys/time.h>
+#include <arpa/inet.h>
+
+typedef struct{
+  u_int32_t exp_id;
+  u_int32_t run_id;
+  u_int32_t key_id;
+  u_int32_t counter;
+  u_int64_t starttime;
+  u_int64_t stoptime;
+  timeval depttime;
+  char junk[1500];
+}transfer_data;
+
+transfer_data *message; 
+
+
 
 static void print_tcp(FILE* dst, const struct ip* ip, const struct tcphdr* tcp, bool compact ){
   if(!compact){
@@ -41,6 +57,19 @@ static void print_udp(FILE* dst, const struct ip* ip, const struct udphdr* udp, 
     fprintf(dst, "UDP(HDR[8]DATA[%d]):\t %s:%d ",(u_int16_t)(ntohs(udp->len)-8),inet_ntoa(ip->ip_src),(u_int16_t)ntohs(udp->source));
   }
   fprintf(dst, " --> %s:%d", inet_ntoa(ip->ip_dst),(u_int16_t)ntohs(udp->dest));
+
+  if ( (u_int16_t)ntohs(udp->dest)==1500  || (u_int16_t)ntohs(udp->source)==1500 ) {
+    fprintf(dst," tg ");
+
+    const void* payload=(const char*)udp+sizeof(struct udphdr);
+    //const void* payload2=(const char*)udp;
+  
+    message=(transfer_data*)payload;
+    fprintf(dst," %u:%u:%u;%u  ", ntohl(message->exp_id),ntohl(message->run_id),ntohl(message->key_id), ntohl(message->counter)); 
+    //    fprintf(dst," %u:%u:%u;%u  %p | %p <> %d ", ntohl(message->exp_id),ntohl(message->run_id),ntohl(message->key_id), ntohl(message->counter),payload,payload2, ntohs(udp->len) );
+     
+  }
+
 }
 
 static void print_icmp(FILE* dst, const struct ip* ip, const struct icmphdr* icmp, bool compact){
