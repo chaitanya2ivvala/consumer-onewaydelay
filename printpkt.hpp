@@ -22,9 +22,9 @@ transfer_data *message;
 
 static void print_tcp(FILE* dst, const struct ip* ip, const struct tcphdr* tcp, bool compact ){
   if(!compact){
-    fprintf(dst, "TCP(%0x)", ntohs(ip->ip_len) - 4*tcp->doff - 4*ip->ip_hl);
+    fprintf(dst, "TCP(%0x) ", ntohs(ip->ip_len) - 4*tcp->doff - 4*ip->ip_hl);
   } else {
-    fprintf(dst, "TCP(HDR[%d]DATA[%0x]):\t [",4*tcp->doff, ntohs(ip->ip_len) - 4*tcp->doff - 4*ip->ip_hl);
+    fprintf(dst, "TCP(HDR[%d]DATA[%0x]) \t [",4*tcp->doff, ntohs(ip->ip_len) - 4*tcp->doff - 4*ip->ip_hl);
     if(tcp->syn) {
       fprintf(dst, "S");
     }
@@ -46,26 +46,29 @@ static void print_tcp(FILE* dst, const struct ip* ip, const struct tcphdr* tcp, 
     fprintf(dst,"] ");
   }
   fprintf(dst, " %s:%d ",inet_ntoa(ip->ip_src),(u_int16_t)ntohs(tcp->source));
-  fprintf(dst, " --> %s:%d",inet_ntoa(ip->ip_dst),(u_int16_t)ntohs(tcp->dest));
+  fprintf(dst, " %s:%d ",inet_ntoa(ip->ip_dst),(u_int16_t)ntohs(tcp->dest));
 }
 
 
 static void print_udp(FILE* dst, const struct ip* ip, const struct udphdr* udp, bool compact){
   if(!compact){
-    fprintf(dst, "UDP[%d]: %s:%d ",(u_int16_t)(ntohs(udp->len)-8),inet_ntoa(ip->ip_src),(u_int16_t)ntohs(udp->source));
+    fprintf(dst, "UDP[%d] %s:%d ",(u_int16_t)(ntohs(udp->len)-8),inet_ntoa(ip->ip_src),(u_int16_t)ntohs(udp->source));
   } else {    
-    fprintf(dst, "UDP(HDR[8]DATA[%d]):\t %s:%d ",(u_int16_t)(ntohs(udp->len)-8),inet_ntoa(ip->ip_src),(u_int16_t)ntohs(udp->source));
+    fprintf(dst, "UDP(HDR[8]DATA[%d])\t %s:%d ",(u_int16_t)(ntohs(udp->len)-8),inet_ntoa(ip->ip_src),(u_int16_t)ntohs(udp->source));
   }
-  fprintf(dst, " --> %s:%d", inet_ntoa(ip->ip_dst),(u_int16_t)ntohs(udp->dest));
+  fprintf(dst, " %s:%d", inet_ntoa(ip->ip_dst),(u_int16_t)ntohs(udp->dest));
 
-  if ( (u_int16_t)ntohs(udp->dest)==1500  || (u_int16_t)ntohs(udp->source)==1500 ) {
+  if ( ((u_int16_t)ntohs(udp->dest)>1499  && (u_int16_t)ntohs(udp->dest)<1511) 
+       || 
+       ((u_int16_t)ntohs(udp->source)>1499  && (u_int16_t)ntohs(udp->source)<1511)
+     ) {
     fprintf(dst," tg ");
 
     const void* payload=(const char*)udp+sizeof(struct udphdr);
     //const void* payload2=(const char*)udp;
   
     message=(transfer_data*)payload;
-    fprintf(dst," %u:%u:%u;%u  ", ntohl(message->exp_id),ntohl(message->run_id),ntohl(message->key_id), ntohl(message->counter)); 
+    fprintf(dst," %u:%u:%u:%u  ", ntohl(message->exp_id),ntohl(message->run_id),ntohl(message->key_id), ntohl(message->counter)); 
     //    fprintf(dst," %u:%u:%u;%u  %p | %p <> %d ", ntohl(message->exp_id),ntohl(message->run_id),ntohl(message->key_id), ntohl(message->counter),payload,payload2, ntohs(udp->len) );
      
   }
@@ -74,11 +77,11 @@ static void print_udp(FILE* dst, const struct ip* ip, const struct udphdr* udp, 
 
 static void print_icmp(FILE* dst, const struct ip* ip, const struct icmphdr* icmp, bool compact){
   if(!compact) {
-	fprintf(dst, "ICMP[%d/%d]: %s ", icmp->type, icmp->code,inet_ntoa(ip->ip_src));
-	fprintf(dst, " --> %s ",inet_ntoa(ip->ip_dst));
+	fprintf(dst, "ICMP[%d/%d] %s ", icmp->type, icmp->code,inet_ntoa(ip->ip_src));
+	fprintf(dst, " %s ",inet_ntoa(ip->ip_dst));
   } else {
-	fprintf(dst, "ICMP:\t %s ",inet_ntoa(ip->ip_src));
-	fprintf(dst, " --> %s ",inet_ntoa(ip->ip_dst));
+	fprintf(dst, "ICMP \t %s ",inet_ntoa(ip->ip_src));
+	fprintf(dst, " %s ",inet_ntoa(ip->ip_dst));
 	fprintf(dst, "Type %d , code %d ", icmp->type, icmp->code);
   }
 
@@ -101,7 +104,7 @@ static void print_icmp(FILE* dst, const struct ip* ip, const struct icmphdr* icm
 
 static void print_ipv4(FILE* dst, const struct ip* ip, bool compact){
 	void* payload = ((char*)ip) + 4*ip->ip_hl;
-	fprintf(dst, ";IPv4[%d/", 4*ip->ip_hl);
+	fprintf(dst, " IPv4[%d/", 4*ip->ip_hl);
 	if(!compact){
 	  fprintf(dst, "%d/",(u_int16_t)ntohs(ip->ip_len));
 	  fprintf(dst, "%d",(u_int8_t)ip->ip_ttl);
@@ -118,9 +121,9 @@ static void print_ipv4(FILE* dst, const struct ip* ip, bool compact){
 	  fprintf(dst, "MF");
 	}
 	if(!compact){
-	  fprintf(dst, "] ; ");
+	  fprintf(dst, "]  ");
 	} else {
-	  fprintf(dst, " Tos=%0x];\t",(u_int8_t)ip->ip_tos);
+	  fprintf(dst, " Tos=%0x] \t",(u_int8_t)ip->ip_tos);
 	}
 
 	switch( ip->ip_p ) {

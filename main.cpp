@@ -41,6 +41,8 @@ static const char* program_name;
 static const char* iface = NULL;
 static uint32_t seek = 0;
 static uint32_t count = 1500;
+static uint32_t batchSize = 0;
+static uint32_t silent = 1;
 static unsigned int timeout = 60;
 static size_t matched = 0;
 static std::map<std::string, packet_id> table; //Out;
@@ -48,12 +50,13 @@ static std::map<std::string, packet_id> table; //Out;
 
 static const struct stream_stat* stream_stat = NULL;
 
-static const char* shortopt = "i:s:c:t:hp:dv";
+static const char* shortopt = "i:s:c:t:b:hp:dv";
 static struct option longopt[] = {
 	{"iface",      required_argument, 0, 'i'},
 	{"seek",       required_argument, 0, 's'},
 	{"count",      required_argument, 0, 'c'},
 	{"timeout",    required_argument, 0, 't'},
+	{"batchsize",  required_argument, 0, 'b'},
 	{"help",       no_argument,       0, 'h'},
 	{"verbose",    no_argument,       0, 'v'},
 	{"displaypkt", no_argument,       0, 'd'},
@@ -67,8 +70,9 @@ static void show_usage(){
 	       "  -i, --iface=IFACE    Interface to listen on.\n"
 	       "  -s, --seek=BYTES     Byte offset to begin from.\n"
 	       "  -c, --count=BYTES    Byte offset to end.\n"
-	       " Will look between Seek -- Count bytes. \n"
+	       "                       Will look between Seek -- Count bytes. \n"
 	       "  -t, --timeout=SEC    Discards packets after SEC.\n"
+	       "  -b, --batchsize=N    Read batchsize packets, then exit.\n"
 	       "  -p N                 Number of points packets are expected to arrive at.\n"
 	       "  -d, --displaypkt     Show the packets.\n"
 	       "  -v, --verbose        Verbose.\n"
@@ -103,8 +107,10 @@ static void handle_alarm(int signum){
 	struct tm tm = *localtime(&t);
 	strftime(timestr, sizeof(timestr), "%a, %d %b %Y %H:%M:%S %z", &tm);
 
-	fprintf(stderr, "%s: [%s] progress report: %'" PRIu64 " packets read (%zd matched, %zd pruned, %zd in progress).\n",
-	        program_name, timestr, (long int)0, matched, pruned, table.size());
+	if (!silent){
+	  fprintf(stderr, "%s: [%s] progress report: %'" PRIu64 " packets read (%zd matched, %zd pruned, %zd in progress).\n",
+		  program_name, timestr, (long int)0, matched, pruned, table.size());
+	}
 	matched = 0;
 }
 
@@ -137,12 +143,12 @@ static void format(packet_id& pkt, const struct cap_header* cp, bool compact){
 		const timepico &a = pkt.data[i].timestamp;
 		const timepico &b = pkt.data[i-1].timestamp;
 		const timepico dt = timepico_sub(a, b);
-		fprintf(stdout, ";%s;%d.%012" PRIu64 ";%s;%d.%012" PRIu64, pkt.data[i-1].mampid.c_str(), b.tv_sec, b.tv_psec, pkt.data[i].mampid.c_str(), a.tv_sec, a.tv_psec);
-		fprintf(stdout, ";%d.%012" PRIu64, dt.tv_sec, dt.tv_psec);
+		fprintf(stdout, " %s %d.%012" PRIu64 " %s %d.%012" PRIu64, pkt.data[i-1].mampid.c_str(), b.tv_sec, b.tv_psec, pkt.data[i].mampid.c_str(), a.tv_sec, a.tv_psec);
+		fprintf(stdout, " %d.%012" PRIu64, dt.tv_sec, dt.tv_psec);
 	}
 	if(printpkt){
 	  if(compact){
-	    fprintf(stdout, ":LINK(%4d):CAPLEN(%4d):", cp->len, cp->caplen);
+	    fprintf(stdout, " LINK(%4d) CAPLEN(%4d):", cp->len, cp->caplen);
 	  }
 	  fprintf(stdout," ");
 	  print_eth(stdout, cp->ethhdr,compact);
@@ -187,6 +193,10 @@ int main(int argc, char* argv[]){
 			num_points = atoi(optarg);
 			break;
 
+		case 'b':
+		  batchSize = (uint32_t)atoi(optarg);
+			break;
+
 		case 'd':
 		  printpkt=true;
 		  break;
@@ -221,7 +231,9 @@ int main(int argc, char* argv[]){
 	stream_stat = stream_get_stat(st);
 
 	unsigned int gseq = 0;
-	fprintf(stdout, "VERBOSE = %d\n", verbose );
+	if (verbose) {
+	  fprintf(stdout, "VERBOSE = %d\nSeek=%d -- %d \nbatchSize = %d \n", verbose, seek,count,batchSize );
+	}
 
 	do {
 		struct cap_header* cp;
@@ -265,6 +277,15 @@ int main(int argc, char* argv[]){
 			id.data[id.num] = {cp->ts, point};
 			if ( ++id.num == num_points ){ /* passed all points */
 				matched++;
+				if(verbose) {
+				  fprintf(stdout,"matched = %d id = %d batchSize = %d \n",(int)matched, id.seq, batchSize);
+				}
+				    
+				if (batchSize>0) {
+				  if ( id.seq > batchSize ){
+				    running=false;
+				  }
+				}
 				format(id, cp,verbose);
 				table.erase(it);
 			}
