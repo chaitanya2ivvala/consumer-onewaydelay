@@ -13,7 +13,10 @@ typedef struct{
   u_int64_t starttime;
   u_int64_t stoptime;
   timeval depttime;
-  char junk[1500];
+  u_int64_t recvstarttime;
+  u_int64_t recvstoptime;
+  timeval recvtime;
+  char junk[1484];
 }transfer_data;
 
 transfer_data *message; 
@@ -69,7 +72,7 @@ static void print_udp(FILE* dst, const struct ip* ip, const struct udphdr* udp, 
   
     message=(transfer_data*)payload;
     fprintf(dst," %u:%u:%u:%u  ", ntohl(message->exp_id),ntohl(message->run_id),ntohl(message->key_id), ntohl(message->counter)); 
-    //    fprintf(dst," %u:%u:%u;%u  %p | %p <> %d ", ntohl(message->exp_id),ntohl(message->run_id),ntohl(message->key_id), ntohl(message->counter),payload,payload2, ntohs(udp->len) );
+    fprintf(dst," %lu:%lu:%lu:%lu <<%ld.%06ld>><<%ld.%06ld>> ", message->starttime,message->stoptime, message->recvstarttime, message->recvstoptime,message->depttime.tv_sec,message->depttime.tv_usec,message->recvtime.tv_sec,message->recvtime.tv_usec);
      
   }
 
